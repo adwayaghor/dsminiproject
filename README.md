@@ -1,5 +1,7 @@
 # Disaster-Resilient Distributed Incident Coordination Network
 
+This is the readme file.
+
 *A Dockerized, offline-capable distributed system for emergency incident reporting and resource coordination.*
 Educational prototype for a Distributed Systems course — **not** a production emergency system.
 
