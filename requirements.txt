@@ -1,0 +1,2 @@
+# Only the dashboard needs a third-party package. Stations, sync, tests use the standard library only.
+streamlit==1.40.2

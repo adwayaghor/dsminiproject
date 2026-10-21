@@ -1,0 +1,131 @@
+# Disaster-Resilient Distributed Incident Coordination Network
+# Start:  docker compose up --build -d      Dashboard: http://localhost:8501
+name: dcn
+
+x-station: &station
+  build:
+    context: .
+    args:
+      BASE_IMAGE: ${BASE_IMAGE:-python:3.12-slim}
+  image: dcn-app:latest
+  command: ["python", "-m", "dcn.station"]
+  restart: unless-stopped            # a crashed station process is restarted automatically
+  networks: [dcn-net]
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"]
+    interval: 5s
+    timeout: 3s
+    retries: 5
+    start_period: 5s
+
+services:
+  station-alpha:
+    <<: *station
+    container_name: dcn-station-alpha
+    environment:
+      NODE_ID: alpha
+      NODE_NAME: "Station Alpha"
+      ZONE: "North Zone"
+      PORT: "8000"
+      DB_PATH: /data/station.db
+      PEERS: "bravo=http://station-bravo:8000,charlie=http://station-charlie:8000,delta=http://station-delta:8000"
+      HTTP_TIMEOUT: "2.0"            # seconds per request
+      HTTP_RETRIES: "1"              # extra attempts, network errors only
+      AUTO_SYNC_SECONDS: "0"         # 0 = sync only when a user asks (deterministic demos)
+    volumes:
+      - alpha-data:/data               # this station's private SQLite database
+    ports:
+      - "127.0.0.1:8001:8000"      # optional: direct access for curl / experiments
+
+  station-bravo:
+    <<: *station
+    container_name: dcn-station-bravo
+    environment:
+      NODE_ID: bravo
+      NODE_NAME: "Station Bravo"
+      ZONE: "South Zone"
+      PORT: "8000"
+      DB_PATH: /data/station.db
+      PEERS: "alpha=http://station-alpha:8000,charlie=http://station-charlie:8000,delta=http://station-delta:8000"
+      HTTP_TIMEOUT: "2.0"            # seconds per request
+      HTTP_RETRIES: "1"              # extra attempts, network errors only
+      AUTO_SYNC_SECONDS: "0"         # 0 = sync only when a user asks (deterministic demos)
+    volumes:
+      - bravo-data:/data               # this station's private SQLite database
+    ports:
+      - "127.0.0.1:8002:8000"      # optional: direct access for curl / experiments
+
+  station-charlie:
+    <<: *station
+    container_name: dcn-station-charlie
+    environment:
+      NODE_ID: charlie
+      NODE_NAME: "Station Charlie"
+      ZONE: "East Zone"
+      PORT: "8000"
+      DB_PATH: /data/station.db
+      PEERS: "alpha=http://station-alpha:8000,bravo=http://station-bravo:8000,delta=http://station-delta:8000"
+      HTTP_TIMEOUT: "2.0"            # seconds per request
+      HTTP_RETRIES: "1"              # extra attempts, network errors only
+      AUTO_SYNC_SECONDS: "0"         # 0 = sync only when a user asks (deterministic demos)
+    volumes:
+      - charlie-data:/data               # this station's private SQLite database
+    ports:
+      - "127.0.0.1:8003:8000"      # optional: direct access for curl / experiments
+
+  station-delta:
+    <<: *station
+    container_name: dcn-station-delta
+    environment:
+      NODE_ID: delta
+      NODE_NAME: "Station Delta"
+      ZONE: "West Zone"
+      PORT: "8000"
+      DB_PATH: /data/station.db
+      PEERS: "alpha=http://station-alpha:8000,bravo=http://station-bravo:8000,charlie=http://station-charlie:8000"
+      HTTP_TIMEOUT: "2.0"            # seconds per request
+      HTTP_RETRIES: "1"              # extra attempts, network errors only
+      AUTO_SYNC_SECONDS: "0"         # 0 = sync only when a user asks (deterministic demos)
+    volumes:
+      - delta-data:/data               # this station's private SQLite database
+    ports:
+      - "127.0.0.1:8004:8000"      # optional: direct access for curl / experiments
+
+  dashboard:
+    <<: *station
+    container_name: dcn-dashboard
+    user: root                       # needed only to use the optional Docker socket below
+    command: ["python", "-m", "streamlit", "run", "dashboard/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"]
+    environment:
+      STATIONS: "alpha=http://station-alpha:8000,bravo=http://station-bravo:8000,charlie=http://station-charlie:8000,delta=http://station-delta:8000"
+    depends_on:
+      station-alpha: {condition: service_healthy}
+      station-bravo: {condition: service_healthy}
+      station-charlie: {condition: service_healthy}
+      station-delta: {condition: service_healthy}
+    volumes:
+      - ./results:/app/results                       # experiment output is written back to your folder
+      - /var/run/docker.sock:/var/run/docker.sock    # OPTIONAL: enables Stop/Start buttons + Scenario D.
+                                                     # Remove this line if you do not want the dashboard to control containers.
+    ports:
+      - "8501:8501"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+networks:
+  dcn-net:
+    name: dcn-net
+
+volumes:
+  alpha-data:
+    name: dcn-alpha-data
+  bravo-data:
+    name: dcn-bravo-data
+  charlie-data:
+    name: dcn-charlie-data
+  delta-data:
+    name: dcn-delta-data

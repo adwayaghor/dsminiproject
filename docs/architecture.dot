@@ -1,0 +1,17 @@
+
+digraph A { rankdir=LR; compound=true; bgcolor="transparent"; fontname="Helvetica"; nodesep=0.25; ranksep=0.8;
+ node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=11];
+ edge [fontname="Helvetica", fontsize=9];
+ user [label="Operator\n(browser :8501)", shape=oval, fillcolor="#fdebd0"];
+ dash [label="Streamlit dashboard\n(stateless control + view)", fillcolor="#d6eaf8"];
+ subgraph cluster_net { label="Docker Compose network dcn-net  (stations talk to each other by service name)"; style=dashed; color="#7f8c8d";
+  subgraph cluster_a { label=""; style=invis; a [label="station-alpha\nNorth Zone\nHTTP :8000", fillcolor="#d4f4dd"]; va [label="alpha.db\n(volume)", shape=cylinder, fillcolor="#f9e79f"]; a -> va; }
+  subgraph cluster_b { label=""; style=invis; b [label="station-bravo\nSouth Zone\nHTTP :8000", fillcolor="#d4f4dd"]; vb [label="bravo.db\n(volume)", shape=cylinder, fillcolor="#f9e79f"]; b -> vb; }
+  subgraph cluster_c { label=""; style=invis; c [label="station-charlie\nEast Zone\nHTTP :8000", fillcolor="#d4f4dd"]; vc [label="charlie.db\n(volume)", shape=cylinder, fillcolor="#f9e79f"]; c -> vc; }
+  subgraph cluster_d { label=""; style=invis; d [label="station-delta\nWest Zone\nHTTP :8000", fillcolor="#d4f4dd"]; vd [label="delta.db\n(volume)", shape=cylinder, fillcolor="#f9e79f"]; d -> vd; }
+  a -> b [dir=both, color="#1b873f", constraint=false, label="peer sync"]; c -> d [dir=both, color="#1b873f", constraint=false];
+  a -> c [dir=both, color="#1b873f", constraint=false]; b -> d [dir=both, color="#1b873f", constraint=false];
+  a -> d [dir=both, color="#1b873f", constraint=false]; b -> c [dir=both, color="#1b873f", constraint=false];
+ }
+ user -> dash; dash -> a [lhead=cluster_net, label="REST / JSON to each station"];
+}
